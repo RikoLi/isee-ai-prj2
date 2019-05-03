@@ -66,7 +66,7 @@ def main():
     ref_wh = [15, 15]            # Reference size of particle
     sigmas = [4, 4, 0.03, 0.03]  # Transition sigma of each attr of a particle
     n_particles = 400            # Number of particles used in particle filter
-    feature_type = 'hog'   # Default feature type, you can try some better features(e.g: HOG)
+    feature_type = 'haar'   # Default feature type, you can try some better features(e.g: HOG)
     step = 1  # Gap of 
     
     # Read image sequences
@@ -83,8 +83,6 @@ def main():
     
     # Initial matching template
     init_features = extract_feature(init_img, init_rect, ref_wh, feature_type)
-    # print(init_features)
-    # input('test')
     template = init_features  # Use feature of latest frame as the matching template
 
     show_img_with_rect(init_img, init_rect, 0, particles, save_dir=save_dir)

@@ -136,18 +136,19 @@ def extract_feature(dst_img, rect, ref_wh, feature_type='intensity'):
     :param feature_type:
     :return: A vector of features value
     """
+    
     rect.clip_range(dst_img.shape[1], dst_img.shape[0])
     roi = dst_img[rect.lx:rect.lx+rect.w, rect.ly:rect.ly+rect.h]
+    scaled_roi = cv2.resize(roi, (ref_wh[0], ref_wh[1]))   # Fixed-size ROI
 
     if feature_type == 'intensity':
-        scaled_roi = cv2.resize(roi, (ref_wh[0], ref_wh[1]))   # Fixed-size ROI
         return scaled_roi.astype(np.float).reshape(1, -1)/255.0
     elif feature_type == 'hog':
-        return get_hog_feature(roi)
-    elif feature_type == 'lbp':
-        pass
+        feature = get_hog_feature(scaled_roi)
+        return feature.astype(np.float).reshape(1, -1)
     elif feature_type == 'haar':
-        pass
+        feature = get_haar_feature(scaled_roi)
+        return feature.astype(np.float).reshape(1, -1)
     else:
         print('Undefined feature type \'{}\' !!!!!!!!!!')
         return None
@@ -242,10 +243,57 @@ def compute_similarity(feature, template):
 
     return sim
 
+
+# ################################ Other features ######################################
 def get_hog_feature(roi):
     """
     Compute HOG of ROI.\n
     :param roi: Region of interest, ndarray\n
-    :return: HOG feature
+    :return: HOG feature, ndarray
     """
+    winSize = (roi.shape[0], roi.shape[1])
+    blockSize = (8, 8)
+    blockStride = (1, 1)
+    cellSize = (8, 8)
+    nbins = 9
+    derivAperture = 1
+    winSigma = 4.0
+    histogramNormType = 0
+    L2HysThreshold = 2.0000000000000001e-01
+    gammaCorrection = 0
+    nlevels = 64
     
+    # Builder descriptor
+    descriptor = cv2.HOGDescriptor(
+        winSize, blockSize, blockStride,
+        cellSize, nbins, derivAperture,
+        winSigma, histogramNormType, L2HysThreshold,
+        gammaCorrection, nlevels
+    )
+
+    # Compute HOG
+    winStride = (8, 8)
+    padding = (8, 8)
+    locations = []
+    hist = descriptor.compute(roi, winStride, padding, locations) # Size: (437400, 1)
+    
+    return hist / np.sum(hist) # Normalization
+
+def get_haar_feature(roi):
+    """
+    Compute Haar feature of ROI.\n
+    :param roi: Region of interest, ndarray\n
+    :return: Haar feature, ndarray
+    """
+    # Build integral image
+    rows = roi.shape[0]
+    cols = roi.shape[1]
+    s_img = np.zeros((rows, cols))
+
+    for i in range(rows):
+        for j in range(cols):
+            s_img[i,j] = np.sum(roi[:i+1,:j+1])
+    
+    # Compute haar feature
+    pass
+    # return feature / np.sum(feature) # Normalization

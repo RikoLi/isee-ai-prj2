@@ -5,7 +5,7 @@ Created on Wed Apr 24 12:05:51 2019
 @author: lee
 """
 
-import cv2
+from cv2 import cv2
 import numpy as np
 import copy
 
@@ -77,15 +77,20 @@ class Particle(object):
         
     def transition(self, dst_sigmas=None):
         """
-        transition by Gauss Distribution with 'sigma'
-	Fill it !!!!!!!!!!!!!!!
+        transition by Gauss Distribution with 'sigma'\n
+	    Fill it !!!!!!!!!!!!!!!
         """
         if dst_sigmas is None:
             sigmas = self.sigmas
         else:
             sigmas = dst_sigmas
         
-        pass
+        # Transition by Gaussian distribution
+        self.cx = int(round(np.random.normal(self.cx, sigmas[0])))
+        self.cy = int(round(np.random.normal(self.cy, sigmas[1])))
+        self.sx = int(round(np.random.normal(self.sx, sigmas[2])))
+        self.sy = int(round(np.random.normal(self.sy, sigmas[3])))
+
         return self
     
     def update_weight(self, w):
@@ -131,14 +136,18 @@ def extract_feature(dst_img, rect, ref_wh, feature_type='intensity'):
     :param feature_type:
     :return: A vector of features value
     """
+    rect.clip_range(dst_img.shape[1], dst_img.shape[0])
+    roi = dst_img[rect.lx:rect.lx+rect.w, rect.ly:rect.ly+rect.h]
 
     if feature_type == 'intensity':
-        rect.clip_range(dst_img.shape[1], dst_img.shape[0])
-        roi = dst_img[rect.lx:rect.lx + rect.w,
-                      rect.ly:rect.ly + rect.h]
-    
         scaled_roi = cv2.resize(roi, (ref_wh[0], ref_wh[1]))   # Fixed-size ROI
         return scaled_roi.astype(np.float).reshape(1, -1)/255.0
+    elif feature_type == 'hog':
+        return get_hog_feature(roi)
+    elif feature_type == 'lbp':
+        pass
+    elif feature_type == 'haar':
+        pass
     else:
         print('Undefined feature type \'{}\' !!!!!!!!!!')
         return None
@@ -160,24 +169,52 @@ def transition_step(particles, sigmas):
 def weighting_step(dst_img, particles, ref_wh, template, feature_type):
     """
     Compute each particle's weight by its similarity
-    :param dst_img: Tracking image
-    :param particles: Current particles
-    :param ref_wh: reference size of particle
-    :param template: template for matching
-    :param feature_type:
-    :return: weights of particles
+    :param dst_img: Tracking image, ndarray\n
+    :param particles: Current particles, list\n
+    :param ref_wh: reference size of particle, list\n
+    :param template: template for matching, ndarray\n
+    :param feature_type: Feature type, str\n
+    :return: weights of particles, ndarray
     """
-    pass
+
+    # ATTENTION: USE compute_similarity() !
+
+    weights = []
+    for ptc in particles:
+        # Make an extraction area
+        ext_area = ptc.to_rect(ref_wh)
+        ptc_feature = extract_feature(dst_img, ext_area, ref_wh, feature_type)
+        weights.append(compute_similarity(ptc_feature, template))
+
+    weights = np.asarray(weights)
+    weights = weights / np.sum(weights) # Normalization
+    return weights
 
 
 def resample_step(particles, weights, rsp_sigmas=None):
     """
     Resample particles according to their weights
-    :param particles: Paricles needed resampling
-    :param weights: Particles' weights
-    :param rsp_sigmas: For transition of resampled particles
+    :param particles: Paricles needed resampling, list\n
+    :param weights: Particles' weights, ndarray\n
+    :param rsp_sigmas: For transition of resampled particles, list
     """
-    pass
+    new_particles = []
+    ptc_amount = len(particles)
+
+    # Only select highest-similarity particles
+    max_id = np.argmax(weights)
+    max_ptc = particles[max_id]
+
+    # Resample
+    for i in range(ptc_amount):
+        ptc = Particle(0, 0, 0, 0, rsp_sigmas)
+        ptc.cx = int(round(np.random.normal(max_ptc.cx, rsp_sigmas[0]))) # Transition
+        ptc.cy = int(round(np.random.normal(max_ptc.cy, rsp_sigmas[1])))
+        ptc.sx = int(round(np.random.normal(max_ptc.sx, rsp_sigmas[2])))
+        ptc.sy = int(round(np.random.normal(max_ptc.sy, rsp_sigmas[3])))
+        new_particles.append(ptc)
+    
+    return new_particles
 
     
 def compute_similarities(features, template):
@@ -190,9 +227,25 @@ def compute_similarities(features, template):
      
 def compute_similarity(feature, template):
     """
-    Compute similarity of a single feature with template
-    :param feature: feature of a single particle
-    :template: template for matching
+    Compute similarity of a single feature with template\n
+    :param feature: feature of a single particle, ndarray\n
+    :template: template for matching, ndarray\n
     """
-    pass
+    
+    # Metric: cosine similarity
+    feature = np.mat(feature)
+    template = np.mat(template)
+    inner_product = float(feature * template.T)
+    # inner_product = np.dot(feature, template)
+    denominator = np.linalg.norm(feature, 2) * np.linalg.norm(template, 2)
+    sim = (inner_product / denominator + 1.0) * 0.5 # Normalization
 
+    return sim
+
+def get_hog_feature(roi):
+    """
+    Compute HOG of ROI.\n
+    :param roi: Region of interest, ndarray\n
+    :return: HOG feature
+    """
+    

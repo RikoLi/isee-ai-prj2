@@ -9,7 +9,7 @@ from path import Path
 import matplotlib.pyplot as plt
 #import matplotlib.image as mpimg
 import numpy as np
-import cv2
+from cv2 import cv2
 
 from particle_filter_class import Rect,Particle
 from particle_filter_class import extract_feature, transition_step, weighting_step, resample_step
@@ -32,9 +32,9 @@ def show_img_with_rect(dst_img, rect=None, frame_id=None, particles=None, save_d
             particles = [particles]
         for particle in particles:
             cv2.circle(tmp_img, (int(particle.cy), int(particle.cx)), 1, (0, 255, 0), -1)
-#    plt.imshow(tmp_img)
-#    plt.axis('off')
-#    plt.show()
+    # plt.imshow(tmp_img)
+    # plt.axis('off')
+    # plt.show()
     cv2.imshow('img', tmp_img)
     cv2.waitKey(50) 
     
@@ -66,7 +66,7 @@ def main():
     ref_wh = [15, 15]            # Reference size of particle
     sigmas = [4, 4, 0.03, 0.03]  # Transition sigma of each attr of a particle
     n_particles = 400            # Number of particles used in particle filter
-    feature_type = 'intensity'   # Default feature type, you can try some better features(e.g: HOG)
+    feature_type = 'hog'   # Default feature type, you can try some better features(e.g: HOG)
     step = 1  # Gap of 
     
     # Read image sequences
@@ -83,6 +83,8 @@ def main():
     
     # Initial matching template
     init_features = extract_feature(init_img, init_rect, ref_wh, feature_type)
+    # print(init_features)
+    # input('test')
     template = init_features  # Use feature of latest frame as the matching template
 
     show_img_with_rect(init_img, init_rect, 0, particles, save_dir=save_dir)

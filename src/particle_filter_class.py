@@ -146,9 +146,6 @@ def extract_feature(dst_img, rect, ref_wh, feature_type='intensity'):
     elif feature_type == 'hog':
         feature = get_hog_feature(scaled_roi)
         return feature.astype(np.float).reshape(1, -1)
-    elif feature_type == 'haar':
-        feature = get_haar_feature(scaled_roi)
-        return feature.astype(np.float).reshape(1, -1)
     else:
         print('Undefined feature type \'{}\' !!!!!!!!!!')
         return None
@@ -279,21 +276,15 @@ def get_hog_feature(roi):
     
     return hist / np.sum(hist) # Normalization
 
-def get_haar_feature(roi):
-    """
-    Compute Haar feature of ROI.\n
-    :param roi: Region of interest, ndarray\n
-    :return: Haar feature, ndarray
-    """
-    # Build integral image
-    rows = roi.shape[0]
-    cols = roi.shape[1]
-    s_img = np.zeros((rows, cols))
 
-    for i in range(rows):
-        for j in range(cols):
-            s_img[i,j] = np.sum(roi[:i+1,:j+1])
+
+
+# ########################## Self-defined class #######################
+class Preprocess:
+    def __init__(self, img):
+        self.img = img
     
-    # Compute haar feature
-    pass
-    # return feature / np.sum(feature) # Normalization
+    def centralize(self):
+        mean = np.mean(self.img, dtype=np.uint8)
+        c_img = ((self.img - mean) + 255) * 0.5
+        return c_img.astype(np.uint8)

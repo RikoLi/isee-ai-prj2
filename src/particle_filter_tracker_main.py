@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from cv2 import cv2
 
-from particle_filter_class import Rect,Particle
+from particle_filter_class import Rect, Particle, Preprocess
 from particle_filter_class import extract_feature, transition_step, weighting_step, resample_step
 
 
@@ -49,10 +49,10 @@ def main():
     #############################################
     # Choose the dataset for evaluation
     #############################################
-    test_split = 'car'
+    test_split = 'David2'
 #    test_split = 'David2'
     dataset_dir = home_dir/'..'/'data'/test_split/'imgs'
-    save_dir = home_dir/'..'/'data'/test_split/'results'
+    save_dir = home_dir/'..'/'data'/test_split/'results_n1000'
 
     # Determine the initial bounding box location
     if test_split == 'car':
@@ -66,7 +66,7 @@ def main():
     ref_wh = [15, 15]            # Reference size of particle
     sigmas = [4, 4, 0.03, 0.03]  # Transition sigma of each attr of a particle
     n_particles = 400            # Number of particles used in particle filter
-    feature_type = 'haar'   # Default feature type, you can try some better features(e.g: HOG)
+    feature_type = 'intensity'   # Default feature type, you can try some better features(e.g: HOG)
     step = 1  # Gap of 
     
     # Read image sequences
@@ -80,6 +80,10 @@ def main():
     init_img = cv2.imread(img_list[0], -1)
     init_particle = init_rect.to_particle(ref_wh, sigmas=sigmas)
     particles = [init_particle.clone() for i in range(n_particles) ]  # Initialize particles
+
+    # # Preprocessing, selective
+    # processor = Preprocess(init_img)
+    # init_img = processor.centralize()
     
     # Initial matching template
     init_features = extract_feature(init_img, init_rect, ref_wh, feature_type)
@@ -90,6 +94,10 @@ def main():
 
     for idx in range(1, n_imgs, step):
         curr_img = cv2.imread(img_list[idx], -1)
+
+        # # Preprocessing, selective
+        # processor = Preprocess(curr_img)
+        # curr_img = processor.centralize()
 
         # Transition particles by Gaussian Distribution
         particles = transition_step(particles, sigmas)
